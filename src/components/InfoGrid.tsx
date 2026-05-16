@@ -119,12 +119,13 @@ export const InfoGrid = () => {
       `}</style>
 
       <section
+        id="info-grid-section"
         ref={sectionRef}
         className="relative z-20 pointer-events-auto overflow-hidden"
         style={{ background: 'linear-gradient(180deg, #050505 0%, #080515 25%, #0c0820 50%, #080515 75%, #050505 100%)' }}
       >
-        {/* Ambient background */}
-        <div className="absolute inset-0 pointer-events-none">
+        {/* Ambient background — hidden on mobile for performance */}
+        <div className="hidden md:block absolute inset-0 pointer-events-none">
           <div className="absolute top-0 left-1/3 w-[600px] h-[600px] rounded-full blur-[200px] opacity-[0.04]" style={{ backgroundColor: '#8b5cf6' }} />
           <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] rounded-full blur-[180px] opacity-[0.04]" style={{ backgroundColor: '#06b6d4' }} />
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full blur-[250px] opacity-[0.03]" style={{ backgroundColor: '#f59e0b' }} />

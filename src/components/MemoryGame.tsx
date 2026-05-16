@@ -121,7 +121,7 @@ export const MemoryGame = () => {
         {/* Decorative brain network background */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           {/* Floating neural particles - reduced for performance */}
-          {Array.from({ length: 10 }).map((_, i) => (
+          {Array.from({ length: 5 }).map((_, i) => (
             <div
               key={i}
               className="absolute w-1 h-1 rounded-full"
@@ -136,10 +136,10 @@ export const MemoryGame = () => {
             />
           ))}
 
-          {/* Ambient gradient orbs */}
-          <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] rounded-full blur-[150px] opacity-10" style={{ backgroundColor: '#8b5cf6' }} />
-          <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] rounded-full blur-[130px] opacity-8" style={{ backgroundColor: '#06b6d4' }} />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-[180px] opacity-[0.06]" style={{ backgroundColor: '#f59e0b' }} />
+          {/* Ambient gradient orbs — only on desktop */}
+          <div className="hidden md:block absolute top-1/4 left-1/4 w-[500px] h-[500px] rounded-full blur-[150px] opacity-10" style={{ backgroundColor: '#8b5cf6' }} />
+          <div className="hidden md:block absolute bottom-1/4 right-1/4 w-[400px] h-[400px] rounded-full blur-[130px] opacity-8" style={{ backgroundColor: '#06b6d4' }} />
+          <div className="hidden md:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-[180px] opacity-[0.06]" style={{ backgroundColor: '#f59e0b' }} />
         </div>
 
         {/* Header */}
@@ -214,10 +214,7 @@ export const MemoryGame = () => {
             ref={containerRef}
             className="grid grid-cols-3 gap-5 md:gap-8 p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] relative shadow-[0_8px_32px_rgba(0,0,0,0.5)] border border-white/20"
             style={{
-              background: 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.01) 100%)',
-              backdropFilter: 'blur(20px) saturate(150%)',
-              WebkitBackdropFilter: 'blur(20px) saturate(150%)',
-              boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.2)',
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(10,5,20,0.9) 100%)',
               willChange: 'transform',
             }}
           >

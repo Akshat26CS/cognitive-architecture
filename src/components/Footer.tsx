@@ -16,13 +16,13 @@ export const Footer = () => {
       `}</style>
       <footer className="relative bg-[#050505] text-white min-h-screen py-32 md:py-48 z-20 pointer-events-auto border-t border-violet-500/20 flex flex-col items-center justify-center overflow-hidden">
         
-        {/* Background neural glows */}
-        <div className="absolute top-0 left-1/4 w-[600px] h-[300px] bg-violet-600/10 rounded-full blur-[100px] pointer-events-none" style={{ animation: 'pulse-glow 6s ease-in-out infinite' }} />
-        <div className="absolute bottom-0 right-1/4 w-[500px] h-[400px] bg-cyan-500/10 rounded-full blur-[120px] pointer-events-none" style={{ animation: 'pulse-glow 8s ease-in-out infinite 2s' }} />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[300px] bg-fuchsia-500/5 rounded-full blur-[150px] pointer-events-none" />
+        {/* Background neural glows — hidden on mobile for performance */}
+        <div className="hidden md:block absolute top-0 left-1/4 w-[600px] h-[300px] bg-violet-600/10 rounded-full blur-[100px] pointer-events-none" style={{ animation: 'pulse-glow 6s ease-in-out infinite' }} />
+        <div className="hidden md:block absolute bottom-0 right-1/4 w-[500px] h-[400px] bg-cyan-500/10 rounded-full blur-[120px] pointer-events-none" style={{ animation: 'pulse-glow 8s ease-in-out infinite 2s' }} />
+        <div className="hidden md:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[300px] bg-fuchsia-500/5 rounded-full blur-[150px] pointer-events-none" />
 
-        {/* Abstract SVG Neural Net Background */}
-        <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-[0.03]" viewBox="0 0 1000 500" preserveAspectRatio="none">
+        {/* Abstract SVG Neural Net Background — hidden on mobile */}
+        <svg className="hidden md:block absolute inset-0 w-full h-full pointer-events-none opacity-[0.03]" viewBox="0 0 1000 500" preserveAspectRatio="none">
           <path d="M0 250 Q 250 100 500 250 T 1000 250" fill="none" stroke="#8b5cf6" strokeWidth="2" />
           <path d="M0 350 Q 300 400 500 200 T 1000 150" fill="none" stroke="#06b6d4" strokeWidth="2" />
           <path d="M0 150 Q 200 50 500 300 T 1000 350" fill="none" stroke="#f59e0b" strokeWidth="2" />

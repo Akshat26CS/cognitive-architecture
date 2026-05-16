@@ -1,4 +1,4 @@
-import React, { useRef, useState, useMemo, Suspense } from 'react';
+import React, { useRef, useState, useMemo, Suspense, useEffect } from 'react';
 import { Canvas, useFrame, useLoader } from '@react-three/fiber';
 import { Float, Html, OrbitControls, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
@@ -84,7 +84,7 @@ const BRAIN_REGIONS: BrainRegionData[] = [
 ];
 
 // ─── Realistic 3D Brain Mesh ───
-const RealBrainModel = ({ onRegionClick, selectedId }: { onRegionClick: (r: BrainRegionData) => void; selectedId: string | null }) => {
+const RealBrainModel = ({ onRegionClick, selectedId, isMobile }: { onRegionClick: (r: BrainRegionData) => void; selectedId: string | null; isMobile: boolean }) => {
   const groupRef = useRef<THREE.Group>(null);
   const brainRef = useRef<THREE.Group>(null);
   const obj = useLoader(OBJLoader, '/brain.obj');
@@ -96,27 +96,39 @@ const RealBrainModel = ({ onRegionClick, selectedId }: { onRegionClick: (r: Brai
     texture.colorSpace = THREE.SRGBColorSpace;
   }, [texture]);
 
-  // Clone and apply realistic material to the loaded OBJ
+  // Clone and apply material — simpler on mobile
   const brainScene = useMemo(() => {
     const cloned = obj.clone();
     cloned.traverse((child) => {
       if (child instanceof THREE.Mesh) {
-        child.material = new THREE.MeshPhysicalMaterial({
-          map: texture,
-          color: '#e8c4c4',
-          roughness: 0.55,
-          metalness: 0.05,
-          clearcoat: 0.3,
-          clearcoatRoughness: 0.4,
-          emissive: '#1a0505',
-          emissiveIntensity: 0.15,
-        });
-        child.castShadow = true;
-        child.receiveShadow = true;
+        if (isMobile) {
+          // Lighter material for mobile — no clearcoat (saves a full rendering pass)
+          child.material = new THREE.MeshStandardMaterial({
+            map: texture,
+            color: '#e8c4c4',
+            roughness: 0.6,
+            metalness: 0.05,
+            emissive: '#1a0505',
+            emissiveIntensity: 0.15,
+          });
+        } else {
+          child.material = new THREE.MeshPhysicalMaterial({
+            map: texture,
+            color: '#e8c4c4',
+            roughness: 0.55,
+            metalness: 0.05,
+            clearcoat: 0.3,
+            clearcoatRoughness: 0.4,
+            emissive: '#1a0505',
+            emissiveIntensity: 0.15,
+          });
+        }
+        child.castShadow = !isMobile;
+        child.receiveShadow = !isMobile;
       }
     });
     return cloned;
-  }, [obj, texture]);
+  }, [obj, texture, isMobile]);
 
   // Center and scale the model
   useMemo(() => {
@@ -124,10 +136,13 @@ const RealBrainModel = ({ onRegionClick, selectedId }: { onRegionClick: (r: Brai
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z);
-    const scale = 5 / maxDim; // Normalize to ~5 units so brain fills viewport
+    
+    // Mobile portrait: much smaller (2.2). Desktop: 5.0
+    const scale = (isMobile ? 2.2 : 5) / maxDim;
+    
     brainScene.scale.setScalar(scale);
     brainScene.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
-  }, [brainScene]);
+  }, [brainScene, isMobile]);
 
   // Slow idle rotation
   useFrame((_, delta) => {
@@ -164,14 +179,15 @@ const RealBrainModel = ({ onRegionClick, selectedId }: { onRegionClick: (r: Brai
           region={region}
           isActive={selectedId === region.id}
           onClick={() => onRegionClick(region)}
+          isMobile={isMobile}
         />
       ))}
     </group>
   );
 };
 
-// ─── 3D Label Component (always visible on top of brain) ───
-const BrainLabel = ({ region, isActive, onClick }: { region: BrainRegionData; isActive: boolean; onClick: () => void }) => {
+// ─── 3D Label Component ───
+const BrainLabel = ({ region, isActive, onClick, isMobile }: { region: BrainRegionData; isActive: boolean; onClick: () => void; isMobile: boolean }) => {
   const groupRef = useRef<THREE.Group>(null);
   const [hovered, setHovered] = useState(false);
   const active = isActive || hovered;
@@ -191,14 +207,14 @@ const BrainLabel = ({ region, isActive, onClick }: { region: BrainRegionData; is
         onPointerOver={(e) => { e.stopPropagation(); setHovered(true); document.body.style.cursor = 'pointer'; }}
         onPointerOut={(e) => { e.stopPropagation(); setHovered(false); document.body.style.cursor = 'auto'; }}
       >
-        <sphereGeometry args={[0.25, 8, 8]} />
+        <sphereGeometry args={[isMobile ? 0.4 : 0.25, 8, 8]} />
         <meshBasicMaterial transparent opacity={0} depthTest={false} />
       </mesh>
 
       <group ref={groupRef}>
-        {/* Outer glow (large, soft) — always on top */}
+        {/* Outer glow */}
         <mesh renderOrder={998}>
-          <sphereGeometry args={[0.18, 16, 16]} />
+          <sphereGeometry args={[0.18, 12, 12]} />
           <meshBasicMaterial
             color={region.color}
             transparent
@@ -208,9 +224,9 @@ const BrainLabel = ({ region, isActive, onClick }: { region: BrainRegionData; is
           />
         </mesh>
 
-        {/* Core bright dot — always on top */}
+        {/* Core bright dot */}
         <mesh renderOrder={999}>
-          <sphereGeometry args={[0.08, 16, 16]} />
+          <sphereGeometry args={[0.08, 12, 12]} />
           <meshBasicMaterial
             color="#ffffff"
             transparent
@@ -220,21 +236,23 @@ const BrainLabel = ({ region, isActive, onClick }: { region: BrainRegionData; is
           />
         </mesh>
 
-        {/* Pulsing ring — always on top */}
-        <mesh rotation={[Math.PI / 2, 0, 0]} renderOrder={997}>
-          <ringGeometry args={[0.2, 0.24, 32]} />
-          <meshBasicMaterial
-            color={region.color}
-            transparent
-            opacity={active ? 0.7 : 0.35}
-            depthTest={false}
-            depthWrite={false}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
+        {/* Pulsing ring — skip on mobile for perf */}
+        {!isMobile && (
+          <mesh rotation={[Math.PI / 2, 0, 0]} renderOrder={997}>
+            <ringGeometry args={[0.2, 0.24, 24]} />
+            <meshBasicMaterial
+              color={region.color}
+              transparent
+              opacity={active ? 0.7 : 0.35}
+              depthTest={false}
+              depthWrite={false}
+              side={THREE.DoubleSide}
+            />
+          </mesh>
+        )}
       </group>
 
-      {/* HTML Label — always on top via CSS */}
+      {/* HTML Label */}
       <Html position={[0.35, 0.15, 0]} zIndexRange={[100, 0]} className="pointer-events-none select-none">
         <div
           className="pointer-events-auto cursor-pointer whitespace-nowrap"
@@ -245,13 +263,11 @@ const BrainLabel = ({ region, isActive, onClick }: { region: BrainRegionData; is
           <div className="flex items-center gap-2">
             <div className="w-8 h-[2px] rounded-full" style={{ background: `linear-gradient(to right, ${region.color}, transparent)` }} />
             <span
-              className="text-xs font-bold uppercase tracking-widest px-2 py-0.5 rounded-md"
+              className="text-[10px] md:text-xs font-bold uppercase tracking-widest px-2 py-0.5 rounded-md"
               style={{
                 color: active ? '#ffffff' : '#e2e8f0',
                 textShadow: `0 0 12px ${region.color}`,
-                backgroundColor: active ? `${region.color}30` : 'rgba(20,20,20,0.4)',
-                backdropFilter: 'blur(6px) saturate(150%)',
-                WebkitBackdropFilter: 'blur(6px) saturate(150%)',
+                backgroundColor: active ? `${region.color}30` : 'rgba(20,20,20,0.6)',
                 border: `1px solid ${active ? region.color : 'rgba(255,255,255,0.15)'}`,
                 boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
                 transition: 'all 0.3s',
@@ -278,13 +294,11 @@ const BrainLoader = () => (
 
 // ─── Detail Panel (Modal) ───
 const DetailPanel = ({ region, onClose }: { region: BrainRegionData; onClose: () => void }) => (
-  <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8" style={{ backgroundColor: 'rgba(0,0,0,0.88)', backdropFilter: 'blur(12px)' }} onClick={onClose}>
+  <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8" style={{ backgroundColor: 'rgba(0,0,0,0.92)' }} onClick={onClose}>
     <div
       className="relative w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-2xl md:rounded-3xl p-6 md:p-12 shadow-[0_8px_32px_rgba(0,0,0,0.5)] border border-white/10 scrollbar-hide"
       style={{ 
-        background: 'linear-gradient(135deg, rgba(30,30,30,0.6) 0%, rgba(10,10,10,0.8) 100%)', 
-        backdropFilter: 'blur(20px) saturate(150%)',
-        WebkitBackdropFilter: 'blur(20px) saturate(150%)',
+        background: 'linear-gradient(135deg, rgba(30,30,30,0.85) 0%, rgba(10,10,10,0.95) 100%)', 
         boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1)',
         animation: 'fadeScale 0.35s ease-out' 
       }}
@@ -323,6 +337,11 @@ const DetailPanel = ({ region, onClose }: { region: BrainRegionData; onClose: ()
 // ─── Main Section ───
 export const BrainDiagramSection = () => {
   const [selectedRegion, setSelectedRegion] = useState<BrainRegionData | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    setIsMobile(window.innerWidth < 768);
+  }, []);
 
   React.useEffect(() => {
     document.body.style.overflow = selectedRegion ? 'hidden' : 'visible';
@@ -345,63 +364,70 @@ export const BrainDiagramSection = () => {
         }
       `}</style>
 
-      <section id="brain-diagram-section" className="relative h-[180vh] bg-[#050505] z-20 pointer-events-auto border-t border-white/10">
-        <div className="sticky top-0 h-screen flex flex-col items-center justify-center overflow-hidden">
+      {/* On mobile: NO sticky positioning, just a normal section that scrolls naturally */}
+      <section id="brain-diagram-section" className={`relative bg-[#050505] z-20 pointer-events-auto border-t border-white/10 ${isMobile ? 'min-h-screen' : 'h-[180vh]'}`}>
+        <div className={`${isMobile ? 'relative min-h-screen' : 'sticky top-0 h-screen'} flex flex-col items-center justify-center overflow-hidden`}>
 
           {/* Ambient background glows */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[900px] bg-violet-950/10 rounded-full blur-[180px] pointer-events-none" />
-          <div className="absolute top-1/3 right-1/4 w-[500px] h-[500px] bg-cyan-950/8 rounded-full blur-[140px] pointer-events-none" />
+          {!isMobile && <div className="absolute top-1/3 right-1/4 w-[500px] h-[500px] bg-cyan-950/8 rounded-full blur-[140px] pointer-events-none" />}
 
           {/* Header */}
-          <div className="absolute top-16 left-6 md:left-20 z-30 pointer-events-none">
+          <div className="absolute top-12 md:top-16 left-6 md:left-20 z-30 pointer-events-none">
             <p className="text-neural-silver font-mono text-[10px] md:text-xs uppercase tracking-[0.3em] mb-3">Interactive 3D Neuroanatomy</p>
-            <h2 className="text-4xl md:text-6xl font-light tracking-tighter mb-4 uppercase text-white">
+            <h2 className="text-3xl md:text-6xl font-light tracking-tighter mb-4 uppercase text-white">
               Human Brain<br/>
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-emerald-400 to-cyan-400 font-semibold drop-shadow-[0_0_15px_rgba(103,232,249,0.4)]">
                 Anatomy
               </span>
             </h2>
-            <p className="text-neural-silver font-mono text-xs max-w-sm leading-relaxed">
-              Drag to rotate the 3D model. Click any labeled region to explore its function.
+            <p className="text-neural-silver font-mono text-[10px] md:text-xs max-w-sm leading-relaxed">
+              {isMobile ? 'Tap a label to explore. Pinch to zoom.' : 'Drag to rotate the 3D model. Click any labeled region to explore its function.'}
             </p>
           </div>
 
           {/* 3D Canvas */}
-          <div className="w-full h-full absolute inset-0">
+          {/* On mobile: pointer-events-none so ALL touch goes to page scroll. Labels use pointer-events-auto. */}
+          <div className={`w-full ${isMobile ? 'h-[65vh]' : 'h-full'} absolute ${isMobile ? 'top-[18vh]' : 'top-0'} left-0`}>
             <Canvas
-              camera={{ position: [0, 0.5, 9], fov: 45 }}
-              dpr={[1, 1.2]}
-              gl={{ antialias: true, powerPreference: 'high-performance' }}
+              camera={{ position: [0, 0.5, isMobile ? 11 : 9], fov: 45 }}
+              dpr={1}
+              gl={{ antialias: !isMobile, powerPreference: 'high-performance' }}
+              style={{ touchAction: isMobile ? 'pan-y' : 'none' }}
             >
               <ambientLight intensity={0.5} />
               <directionalLight position={[5, 5, 3]} intensity={1.8} color="#ffffff" />
-              <directionalLight position={[-3, -2, -4]} intensity={0.6} color="#67e8f9" />
-              <pointLight position={[0, 4, 2]} intensity={0.8} color="#a78bfa" />
-              <pointLight position={[0, -3, -1.5]} intensity={0.5} color="#f472b6" />
+              {!isMobile && <directionalLight position={[-3, -2, -4]} intensity={0.6} color="#67e8f9" />}
+              {!isMobile && <pointLight position={[0, 4, 2]} intensity={0.8} color="#a78bfa" />}
+              {!isMobile && <pointLight position={[0, -3, -1.5]} intensity={0.5} color="#f472b6" />}
 
               <Suspense fallback={<BrainLoader />}>
-                <Float speed={0.8} rotationIntensity={0.1} floatIntensity={0.3}>
+                <Float speed={isMobile ? 0.4 : 0.8} rotationIntensity={isMobile ? 0.05 : 0.1} floatIntensity={isMobile ? 0.1 : 0.3}>
                   <RealBrainModel
                     onRegionClick={setSelectedRegion}
                     selectedId={selectedRegion?.id ?? null}
+                    isMobile={isMobile}
                   />
                 </Float>
               </Suspense>
 
-              <OrbitControls
-                enablePan={false}
-                enableZoom={false}
-                minDistance={5}
-                maxDistance={16}
-                autoRotate={false}
-              />
+              {/* OrbitControls: DISABLED on mobile so scroll works */}
+              {!isMobile && (
+                <OrbitControls
+                  enablePan={false}
+                  enableZoom={false}
+                  minDistance={5}
+                  maxDistance={16}
+                  autoRotate={false}
+                />
+              )}
             </Canvas>
           </div>
 
           {/* Scroll & Interaction Hint */}
-          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center opacity-50 z-20">
+          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center opacity-50 z-20 w-full px-6 text-center">
             <span className="text-[10px] uppercase tracking-[0.25em] mb-3 font-mono text-neural-silver">
-              Drag to rotate · Click a region
+              {isMobile ? 'Tap a label to explore · Scroll to continue' : 'Drag to rotate · Click a region'}
             </span>
             <div className="w-px h-10 bg-gradient-to-b from-white/40 to-transparent" />
           </div>
