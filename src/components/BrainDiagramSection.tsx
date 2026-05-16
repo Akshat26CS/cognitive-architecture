@@ -173,15 +173,24 @@ const RealBrainModel = ({ onRegionClick, selectedId, isMobile }: { onRegionClick
       </group>
 
       {/* 3D Labels floating around the brain */}
-      {BRAIN_REGIONS.map((region) => (
-        <BrainLabel
-          key={region.id}
-          region={region}
-          isActive={selectedId === region.id}
-          onClick={() => onRegionClick(region)}
-          isMobile={isMobile}
-        />
-      ))}
+      {BRAIN_REGIONS.map((region) => {
+        // Scale label positions proportionally to match brain size
+        // Desktop brain = 5.0, Mobile brain = 3.5, ratio = 0.7
+        const scaleFactor = isMobile ? 0.7 : 1;
+        const scaledRegion = {
+          ...region,
+          position: region.position.map(p => p * scaleFactor) as [number, number, number],
+        };
+        return (
+          <BrainLabel
+            key={region.id}
+            region={scaledRegion}
+            isActive={selectedId === region.id}
+            onClick={() => onRegionClick(region)}
+            isMobile={isMobile}
+          />
+        );
+      })}
     </group>
   );
 };
