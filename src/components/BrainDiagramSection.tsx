@@ -137,8 +137,8 @@ const RealBrainModel = ({ onRegionClick, selectedId, isMobile }: { onRegionClick
     const size = box.getSize(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z);
     
-    // Mobile portrait: much smaller (2.2). Desktop: 5.0
-    const scale = (isMobile ? 2.2 : 5) / maxDim;
+    // Mobile portrait: 3.5 fits nicely. Desktop: 5.0
+    const scale = (isMobile ? 3.5 : 5) / maxDim;
     
     brainScene.scale.setScalar(scale);
     brainScene.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
@@ -387,13 +387,15 @@ export const BrainDiagramSection = () => {
           </div>
 
           {/* 3D Canvas */}
-          {/* On mobile: pointer-events-none so ALL touch goes to page scroll. Labels use pointer-events-auto. */}
-          <div className={`w-full ${isMobile ? 'h-[65vh]' : 'h-full'} absolute ${isMobile ? 'top-[18vh]' : 'top-0'} left-0`}>
+          {/* On mobile: canvas is a contained rounded box so user can scroll by swiping OUTSIDE it */}
+          <div className={isMobile
+            ? 'relative w-[90vw] h-[55vh] mx-auto mt-[22vh] rounded-2xl overflow-hidden border border-white/10'
+            : 'w-full h-full absolute top-0 left-0'
+          }>
             <Canvas
-              camera={{ position: [0, 0.5, isMobile ? 11 : 9], fov: 45 }}
+              camera={{ position: [0, 0.5, 9], fov: 45 }}
               dpr={1}
               gl={{ antialias: !isMobile, powerPreference: 'high-performance' }}
-              style={{ touchAction: isMobile ? 'pan-y' : 'none' }}
             >
               <ambientLight intensity={0.5} />
               <directionalLight position={[5, 5, 3]} intensity={1.8} color="#ffffff" />
@@ -411,23 +413,21 @@ export const BrainDiagramSection = () => {
                 </Float>
               </Suspense>
 
-              {/* OrbitControls: DISABLED on mobile so scroll works */}
-              {!isMobile && (
-                <OrbitControls
-                  enablePan={false}
-                  enableZoom={false}
-                  minDistance={5}
-                  maxDistance={16}
-                  autoRotate={false}
-                />
-              )}
+              {/* OrbitControls: enabled on ALL devices — zoom + rotate */}
+              <OrbitControls
+                enablePan={false}
+                enableZoom={isMobile}
+                minDistance={5}
+                maxDistance={16}
+                autoRotate={false}
+              />
             </Canvas>
           </div>
 
           {/* Scroll & Interaction Hint */}
-          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center opacity-50 z-20 w-full px-6 text-center">
+          <div className="absolute bottom-6 md:bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center opacity-50 z-20 w-full px-6 text-center">
             <span className="text-[10px] uppercase tracking-[0.25em] mb-3 font-mono text-neural-silver">
-              {isMobile ? 'Tap a label to explore · Scroll to continue' : 'Drag to rotate · Click a region'}
+              {isMobile ? 'Drag inside to rotate · Pinch to zoom · Scroll outside to continue' : 'Drag to rotate · Click a region'}
             </span>
             <div className="w-px h-10 bg-gradient-to-b from-white/40 to-transparent" />
           </div>
