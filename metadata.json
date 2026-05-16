@@ -1,0 +1,6 @@
+{
+  "name": "Cognitive Architecture",
+  "description": "An interactive, premium 3D landing page exploring short-term memory through WebGL and GSAP animations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
