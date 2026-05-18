@@ -85,7 +85,7 @@ export const CognitiveInterference = ({ onQuit }: { onQuit?: () => void }) => {
 
   if (!isPlaying && !gameOver) {
     return (
-      <div className="w-full max-w-2xl px-6 py-12 flex flex-col items-center text-center bg-[#0a0514] border border-rose-500/20 rounded-3xl shadow-[0_0_30px_rgba(244,63,94,0.1)]">
+      <div className="relative z-20 pointer-events-auto w-full max-w-2xl px-6 py-12 flex flex-col items-center text-center bg-[#0a0514] border border-rose-500/20 rounded-3xl shadow-[0_0_30px_rgba(244,63,94,0.1)]">
         <div className="w-16 h-16 rounded-full bg-rose-500/20 flex items-center justify-center text-rose-500 text-2xl mb-6">
           ⚡
         </div>
@@ -109,7 +109,7 @@ export const CognitiveInterference = ({ onQuit }: { onQuit?: () => void }) => {
   }
 
   return (
-    <div id="stroop-wrapper" className="w-full max-w-3xl px-4 flex flex-col items-center transition-colors duration-200">
+    <div id="stroop-wrapper" className="relative z-20 pointer-events-auto w-full max-w-3xl px-4 flex flex-col items-center transition-colors duration-200">
       
       {/* HUD */}
       <div className="w-full flex justify-between items-center mb-12 px-6 py-4 bg-black/50 rounded-2xl border border-white/10">
