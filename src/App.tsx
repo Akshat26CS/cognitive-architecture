@@ -2,12 +2,11 @@ import React from 'react';
 import { BrainCanvas } from './components/BrainCanvas';
 import { Hero } from './components/Hero';
 import { AboutSection } from './components/AboutSection';
-import { MemoryGame } from './components/MemoryGame';
+import { MiniGames } from './components/MiniGames';
 import { InfoGrid } from './components/InfoGrid';
 import { BrainDiagramSection } from './components/BrainDiagramSection';
 import { Footer } from './components/Footer';
 import { DNADivider } from './components/DNADivider';
-import { SynapticPairs } from './components/SynapticPairs';
 
 export default function App() {
   return (
@@ -20,9 +19,7 @@ export default function App() {
         <Hero />
         <AboutSection />
         <DNADivider />
-        <MemoryGame />
-        <DNADivider />
-        <SynapticPairs />
+        <MiniGames />
         <InfoGrid />
         <BrainDiagramSection />
         <Footer />
@@ -30,4 +27,3 @@ export default function App() {
     </div>
   );
 }
-
