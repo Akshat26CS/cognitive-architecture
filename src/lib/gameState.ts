@@ -31,13 +31,51 @@ export const COUPONS = [
   { levelReq: 8, code: 'QUANTUM50', desc: '50% Off Premium Plan' },
 ];
 
+export const getActiveUser = (): string | null => {
+  return localStorage.getItem('cog_active_user');
+};
+
+export const getLocalProfiles = (): string[] => {
+  const profiles = localStorage.getItem('cog_profiles_list');
+  return profiles ? JSON.parse(profiles) : [];
+};
+
+export const loginUser = (username: string) => {
+  const normalized = username.trim();
+  if (!normalized) return;
+  
+  localStorage.setItem('cog_active_user', normalized);
+  
+  // Add to profiles list if not exists
+  const list = getLocalProfiles();
+  if (!list.includes(normalized)) {
+    list.push(normalized);
+    localStorage.setItem('cog_profiles_list', JSON.stringify(list));
+  }
+  
+  window.dispatchEvent(new Event('cog_state_updated'));
+};
+
+export const logoutUser = () => {
+  localStorage.removeItem('cog_active_user');
+  window.dispatchEvent(new Event('cog_state_updated'));
+};
+
 export const getGameState = (): UserStats => {
-  const saved = localStorage.getItem('cog_user_state');
-  if (!saved) return DEFAULT_STATS;
+  const activeUser = getActiveUser();
+  if (!activeUser) {
+    return { ...DEFAULT_STATS, username: 'Guest' };
+  }
+  
+  const saved = localStorage.getItem(`cog_user_state_${activeUser}`);
+  if (!saved) {
+    const newStats = { ...DEFAULT_STATS, username: activeUser };
+    localStorage.setItem(`cog_user_state_${activeUser}`, JSON.stringify(newStats));
+    return newStats;
+  }
   
   try {
     const parsed = { ...DEFAULT_STATS, ...JSON.parse(saved) };
-    // Handle daily streak logic
     const now = new Date();
     if (parsed.lastPlayed) {
       const last = new Date(parsed.lastPlayed);
@@ -45,41 +83,43 @@ export const getGameState = (): UserStats => {
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
       
       if (diffDays > 1 && diffDays < 3) {
-        // Increment streak if played yesterday
         parsed.streak += 1;
       } else if (diffDays >= 3) {
-        // Reset streak if more than 48 hours passed
         parsed.streak = 0;
       }
     }
     parsed.lastPlayed = now.toISOString();
-    localStorage.setItem('cog_user_state', JSON.stringify(parsed));
+    localStorage.setItem(`cog_user_state_${activeUser}`, JSON.stringify(parsed));
     return parsed;
   } catch {
-    return DEFAULT_STATS;
+    return { ...DEFAULT_STATS, username: activeUser };
   }
 };
 
 export const updateGameState = (updates: Partial<UserStats>) => {
+  const activeUser = getActiveUser();
+  if (!activeUser) return DEFAULT_STATS;
+
   const current = getGameState();
   const next = { ...current, ...updates };
   
-  // Level up logic (every 100 XP)
   if (next.xp >= next.level * 100) {
     next.level += 1;
   }
 
-  localStorage.setItem('cog_user_state', JSON.stringify(next));
+  localStorage.setItem(`cog_user_state_${activeUser}`, JSON.stringify(next));
   window.dispatchEvent(new Event('cog_state_updated'));
   return next;
 };
 
 export const awardXP = (amount: number, statToBoost?: keyof UserStats) => {
+  const activeUser = getActiveUser();
+  if (!activeUser) return DEFAULT_STATS;
+
   const current = getGameState();
   const updates: Partial<UserStats> = { xp: current.xp + amount };
   
   if (statToBoost && typeof current[statToBoost] === 'number') {
-    // Increase specific stat slightly, max 100
     const newVal = Math.min(100, (current[statToBoost] as number) + Math.floor(amount / 10));
     (updates as any)[statToBoost] = newVal;
   }
@@ -87,9 +127,11 @@ export const awardXP = (amount: number, statToBoost?: keyof UserStats) => {
   return updateGameState(updates);
 };
 
-// Check if user completed all sublevels of a major level
 export const checkAndAwardCoupons = () => {
-  const completedRaw = localStorage.getItem('cog_completed');
+  const activeUser = getActiveUser();
+  if (!activeUser) return;
+
+  const completedRaw = localStorage.getItem(`cog_completed_${activeUser}`);
   if (!completedRaw) return;
   const completed = JSON.parse(completedRaw);
   
@@ -98,7 +140,6 @@ export const checkAndAwardCoupons = () => {
   let changed = false;
 
   COUPONS.forEach(coupon => {
-    // Check if they completed all 10 sublevels of the required level (0-indexed)
     let hasCompletedLevel = true;
     for (let i = 0; i < 10; i++) {
       if (!completed[`${coupon.levelReq - 1}-${i}`]) {

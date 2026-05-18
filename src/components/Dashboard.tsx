@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getGameState, UserStats, COUPONS, updateGameState } from '../lib/gameState';
+import { getGameState, UserStats, COUPONS, updateGameState, getActiveUser, logoutUser, loginUser, getLocalProfiles } from '../lib/gameState';
 import { cn } from '../lib/utils';
 
 interface DashboardProps {
@@ -99,10 +99,16 @@ export const Dashboard = ({ onClose }: DashboardProps) => {
   const [activeTab, setActiveTab] = useState<'profile' | 'leaderboard' | 'rewards'>('profile');
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState('');
+  const [loginName, setLoginName] = useState('');
+  const [localProfiles, setLocalProfiles] = useState<string[]>([]);
 
   useEffect(() => {
     setStats(getGameState());
-    const handleUpdate = () => setStats(getGameState());
+    setLocalProfiles(getLocalProfiles());
+    const handleUpdate = () => {
+      setStats(getGameState());
+      setLocalProfiles(getLocalProfiles());
+    };
     window.addEventListener('cog_state_updated', handleUpdate);
     return () => window.removeEventListener('cog_state_updated', handleUpdate);
   }, []);
@@ -122,6 +128,70 @@ export const Dashboard = ({ onClose }: DashboardProps) => {
     }
     setIsEditingName(false);
   };
+
+  const handleLogin = () => {
+    if (loginName.trim()) {
+      loginUser(loginName.trim());
+      setLoginName('');
+    }
+  };
+
+  const activeUser = getActiveUser();
+
+  if (!activeUser) {
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-300">
+        <div className="relative w-full max-w-md bg-[#0a0514] border border-violet-500/30 rounded-3xl p-8 overflow-hidden shadow-[0_0_50px_rgba(139,92,246,0.15)] flex flex-col items-center justify-center text-center">
+          <button onClick={onClose} className="absolute top-6 right-6 w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-colors">
+            ✕
+          </button>
+          
+          <div className="w-16 h-16 rounded-full bg-violet-500/20 flex items-center justify-center text-violet-500 text-3xl mb-6 shadow-[0_0_20px_rgba(139,92,246,0.2)] animate-pulse">
+            🔑
+          </div>
+          
+          <h2 className="text-2xl font-black uppercase tracking-wider mb-2 text-white">Cognitive <span className="text-violet-400">Identity</span></h2>
+          <p className="text-xs font-mono text-white/40 mb-8 max-w-xs">Enter your synaptic username to load your personal laboratory stats, streak, and rewards.</p>
+          
+          <input
+            type="text"
+            placeholder="Username"
+            value={loginName}
+            onChange={(e) => setLoginName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+            className="w-full bg-black/50 border border-violet-500/30 rounded-xl px-4 py-3 text-sm font-bold text-white font-mono focus:outline-none focus:border-violet-500 mb-4 text-center"
+            maxLength={15}
+          />
+          
+          <button
+            onClick={handleLogin}
+            className="w-full py-3 rounded-xl bg-violet-500 hover:bg-violet-400 text-white font-bold font-mono tracking-widest uppercase transition-colors shadow-[0_0_15px_rgba(139,92,246,0.3)] mb-8"
+          >
+            Access Core
+          </button>
+
+          {/* Local Profiles list */}
+          {localProfiles.length > 0 && (
+            <div className="w-full border-t border-white/5 pt-6 text-left">
+              <span className="text-[10px] font-mono text-white/30 uppercase tracking-widest block mb-3">Saved Identities</span>
+              <div className="space-y-2 max-h-[120px] overflow-y-auto pr-2">
+                {localProfiles.map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => loginUser(p)}
+                    className="w-full flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5 hover:border-violet-500/30 hover:bg-violet-500/5 transition-all text-xs font-bold text-white font-mono"
+                  >
+                    <span>{p}</span>
+                    <span className="text-violet-400 text-[10px]">Access →</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   if (!stats) return null;
 
@@ -181,6 +251,14 @@ export const Dashboard = ({ onClose }: DashboardProps) => {
                 <span className="hidden md:inline">{tab.label}</span>
               </button>
             ))}
+            
+            <button
+              onClick={logoutUser}
+              className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-sm font-medium text-rose-500 hover:bg-rose-500/10 mt-4 md:mt-2 text-left"
+            >
+              <span>🔑</span>
+              <span>Logout</span>
+            </button>
           </nav>
 
           <div className="mt-auto hidden md:block">

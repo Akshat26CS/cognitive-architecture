@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '../lib/utils';
 import gsap from 'gsap';
-import { awardXP, checkAndAwardCoupons } from '../lib/gameState';
+import { awardXP, checkAndAwardCoupons, getActiveUser } from '../lib/gameState';
 
 // ─── Level & Sublevel System ───
 const LEVEL_META = [
@@ -61,8 +61,13 @@ export const MemoryGame = () => {
   const tlRef = useRef<gsap.core.Timeline | null>(null);
 
   useEffect(() => {
-    const s = localStorage.getItem('cog_completed');
-    if (s) setCompleted(JSON.parse(s));
+    const activeUser = getActiveUser() || 'Guest';
+    const s = localStorage.getItem(`cog_completed_${activeUser}`);
+    if (s) {
+      setCompleted(JSON.parse(s));
+    } else {
+      setCompleted({});
+    }
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, []);
 
@@ -160,7 +165,9 @@ export const MemoryGame = () => {
       const nk = key(selectedLevel, selectedSub);
       const nc = { ...completed, [nk]: true };
       setCompleted(nc);
-      localStorage.setItem('cog_completed', JSON.stringify(nc));
+      
+      const activeUser = getActiveUser() || 'Guest';
+      localStorage.setItem(`cog_completed_${activeUser}`, JSON.stringify(nc));
       
       // Award XP and check coupons
       awardXP(25 + (selectedLevel * 10), 'memoryCapacity');
