@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getGameState, UserStats, COUPONS, updateGameState, getActiveUser, logoutUser, loginUser, getLocalProfiles } from '../lib/gameState';
+import { getGameState, UserStats, COUPONS, updateGameState, getActiveUser, signOutUser, signInUser, signUpUser } from '../lib/gameState';
 import { cn } from '../lib/utils';
 
 interface DashboardProps {
@@ -99,15 +99,19 @@ export const Dashboard = ({ onClose }: DashboardProps) => {
   const [activeTab, setActiveTab] = useState<'profile' | 'leaderboard' | 'rewards'>('profile');
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState('');
-  const [loginName, setLoginName] = useState('');
-  const [localProfiles, setLocalProfiles] = useState<string[]>([]);
+  
+  // Auth Form State
+  const [authTab, setAuthTab] = useState<'signin' | 'signup'>('signin');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     setStats(getGameState());
-    setLocalProfiles(getLocalProfiles());
     const handleUpdate = () => {
       setStats(getGameState());
-      setLocalProfiles(getLocalProfiles());
     };
     window.addEventListener('cog_state_updated', handleUpdate);
     return () => window.removeEventListener('cog_state_updated', handleUpdate);
@@ -129,11 +133,38 @@ export const Dashboard = ({ onClose }: DashboardProps) => {
     setIsEditingName(false);
   };
 
-  const handleLogin = () => {
-    if (loginName.trim()) {
-      loginUser(loginName.trim());
-      setLoginName('');
+  const handleAuthSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg('');
+    setLoading(true);
+
+    if (!email.trim() || !password.trim()) {
+      setErrorMsg('Please fill in all credentials.');
+      setLoading(false);
+      return;
     }
+
+    if (authTab === 'signup' && !username.trim()) {
+      setErrorMsg('Please specify a secure username.');
+      setLoading(false);
+      return;
+    }
+
+    let result;
+    if (authTab === 'signin') {
+      result = await signInUser(email.trim(), password);
+    } else {
+      result = await signUpUser(username.trim(), email.trim(), password);
+    }
+
+    if (result.error) {
+      setErrorMsg(result.error);
+    } else {
+      setEmail('');
+      setPassword('');
+      setUsername('');
+    }
+    setLoading(false);
   };
 
   const activeUser = getActiveUser();
@@ -141,7 +172,7 @@ export const Dashboard = ({ onClose }: DashboardProps) => {
   if (!activeUser) {
     return (
       <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-300">
-        <div className="relative w-full max-w-md bg-[#0a0514] border border-violet-500/30 rounded-3xl p-8 overflow-hidden shadow-[0_0_50px_rgba(139,92,246,0.15)] flex flex-col items-center justify-center text-center">
+        <div className="relative w-full max-w-md bg-[#0a0514] border border-violet-500/30 rounded-3xl p-8 overflow-hidden shadow-[0_0_50px_rgba(139,92,246,0.15)] flex flex-col items-center">
           <button onClick={onClose} className="absolute top-6 right-6 w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-colors">
             ✕
           </button>
@@ -150,44 +181,85 @@ export const Dashboard = ({ onClose }: DashboardProps) => {
             🔑
           </div>
           
-          <h2 className="text-2xl font-black uppercase tracking-wider mb-2 text-white">Cognitive <span className="text-violet-400">Identity</span></h2>
-          <p className="text-xs font-mono text-white/40 mb-8 max-w-xs">Enter your synaptic username to load your personal laboratory stats, streak, and rewards.</p>
-          
-          <input
-            type="text"
-            placeholder="Username"
-            value={loginName}
-            onChange={(e) => setLoginName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-            className="w-full bg-black/50 border border-violet-500/30 rounded-xl px-4 py-3 text-sm font-bold text-white font-mono focus:outline-none focus:border-violet-500 mb-4 text-center"
-            maxLength={15}
-          />
-          
-          <button
-            onClick={handleLogin}
-            className="w-full py-3 rounded-xl bg-violet-500 hover:bg-violet-400 text-white font-bold font-mono tracking-widest uppercase transition-colors shadow-[0_0_15px_rgba(139,92,246,0.3)] mb-8"
-          >
-            Access Core
-          </button>
+          <h2 className="text-2xl font-black uppercase tracking-wider mb-2 text-white text-center">Cognitive <span className="text-violet-400">Terminal</span></h2>
+          <p className="text-xs font-mono text-white/40 mb-6 max-w-xs text-center">Initialize secure sync with Supabase cloud database to preserve your synaptic scores.</p>
 
-          {/* Local Profiles list */}
-          {localProfiles.length > 0 && (
-            <div className="w-full border-t border-white/5 pt-6 text-left">
-              <span className="text-[10px] font-mono text-white/30 uppercase tracking-widest block mb-3">Saved Identities</span>
-              <div className="space-y-2 max-h-[120px] overflow-y-auto pr-2">
-                {localProfiles.map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => loginUser(p)}
-                    className="w-full flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5 hover:border-violet-500/30 hover:bg-violet-500/5 transition-all text-xs font-bold text-white font-mono"
-                  >
-                    <span>{p}</span>
-                    <span className="text-violet-400 text-[10px]">Access →</span>
-                  </button>
-                ))}
+          {/* Form Tabs */}
+          <div className="w-full flex bg-black/40 border border-white/5 rounded-xl p-1 mb-6">
+            <button
+              onClick={() => { setAuthTab('signin'); setErrorMsg(''); }}
+              className={cn(
+                "flex-1 py-2 rounded-lg text-xs font-bold font-mono tracking-widest uppercase transition-all",
+                authTab === 'signin' ? "bg-violet-500/20 text-violet-300 border border-violet-500/30" : "text-white/40 hover:text-white"
+              )}
+            >
+              Sign In
+            </button>
+            <button
+              onClick={() => { setAuthTab('signup'); setErrorMsg(''); }}
+              className={cn(
+                "flex-1 py-2 rounded-lg text-xs font-bold font-mono tracking-widest uppercase transition-all",
+                authTab === 'signup' ? "bg-violet-500/20 text-violet-300 border border-violet-500/30" : "text-white/40 hover:text-white"
+              )}
+            >
+              Register
+            </button>
+          </div>
+
+          <form onSubmit={handleAuthSubmit} className="w-full space-y-4">
+            {authTab === 'signup' && (
+              <div className="space-y-1">
+                <label className="text-[10px] font-mono uppercase tracking-widest text-violet-300/80">Username</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Brainiac42"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="w-full bg-black/50 border border-violet-500/20 rounded-xl px-4 py-2.5 text-sm font-bold text-white font-mono focus:outline-none focus:border-violet-500"
+                  maxLength={15}
+                  disabled={loading}
+                />
               </div>
+            )}
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-mono uppercase tracking-widest text-violet-300/80">Email Address</label>
+              <input
+                type="email"
+                placeholder="doctor@synapse.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full bg-black/50 border border-violet-500/20 rounded-xl px-4 py-2.5 text-sm font-bold text-white font-mono focus:outline-none focus:border-violet-500"
+                disabled={loading}
+              />
             </div>
-          )}
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-mono uppercase tracking-widest text-violet-300/80">Password</label>
+              <input
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-black/50 border border-violet-500/20 rounded-xl px-4 py-2.5 text-sm font-bold text-white font-mono focus:outline-none focus:border-violet-500"
+                disabled={loading}
+              />
+            </div>
+
+            {errorMsg && (
+              <div className="p-3 bg-rose-500/10 border border-rose-500/30 text-rose-400 rounded-xl text-xs font-mono tracking-wide text-center">
+                ⚠️ {errorMsg}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 rounded-xl bg-violet-500 hover:bg-violet-400 disabled:bg-violet-800 text-white font-bold font-mono tracking-widest uppercase transition-colors shadow-[0_0_15px_rgba(139,92,246,0.3)] mt-2"
+            >
+              {loading ? 'SYNCING NEURONS...' : authTab === 'signin' ? 'ACCESS SYSTEMS' : 'INITIALIZE PROTOCOL'}
+            </button>
+          </form>
         </div>
       </div>
     );
@@ -253,7 +325,7 @@ export const Dashboard = ({ onClose }: DashboardProps) => {
             ))}
             
             <button
-              onClick={logoutUser}
+              onClick={signOutUser}
               className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-sm font-medium text-rose-500 hover:bg-rose-500/10 mt-4 md:mt-2 text-left"
             >
               <span>🔑</span>

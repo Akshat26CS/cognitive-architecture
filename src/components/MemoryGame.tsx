@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '../lib/utils';
 import gsap from 'gsap';
-import { awardXP, checkAndAwardCoupons, getActiveUser } from '../lib/gameState';
+import { awardXP, checkAndAwardCoupons, getCompletedStages, saveCompletedStage } from '../lib/gameState';
 
 // ─── Level & Sublevel System ───
 const LEVEL_META = [
@@ -61,13 +61,7 @@ export const MemoryGame = () => {
   const tlRef = useRef<gsap.core.Timeline | null>(null);
 
   useEffect(() => {
-    const activeUser = getActiveUser() || 'Guest';
-    const s = localStorage.getItem(`cog_completed_${activeUser}`);
-    if (s) {
-      setCompleted(JSON.parse(s));
-    } else {
-      setCompleted({});
-    }
+    setCompleted(getCompletedStages());
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, []);
 
@@ -163,11 +157,8 @@ export const MemoryGame = () => {
       if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
       setSuccess(true); setIsPlaying(false); setIsRotated(false);
       const nk = key(selectedLevel, selectedSub);
-      const nc = { ...completed, [nk]: true };
-      setCompleted(nc);
-      
-      const activeUser = getActiveUser() || 'Guest';
-      localStorage.setItem(`cog_completed_${activeUser}`, JSON.stringify(nc));
+      saveCompletedStage(nk);
+      setCompleted(getCompletedStages());
       
       // Award XP and check coupons
       awardXP(25 + (selectedLevel * 10), 'memoryCapacity');
