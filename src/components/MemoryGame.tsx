@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { cn } from '../lib/utils';
 import gsap from 'gsap';
 
@@ -31,11 +31,26 @@ export const MemoryGame = () => {
   const [isShowingSequence, setIsShowingSequence] = useState(false);
   const [level, setLevel] = useState(1);
   const [activeNode, setActiveNode] = useState<number | null>(null);
+  const [distractionNode, setDistractionNode] = useState<number | null>(null);
   const [failed, setFailed] = useState(false);
   const [success, setSuccess] = useState(false);
   const [highScore, setHighScore] = useState(1);
+  
+  // Modifiers
+  const [isReverseMode, setIsReverseMode] = useState(false);
+  const [isRotated, setIsRotated] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(100);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('cognitive_highscore');
+    if (saved) setHighScore(parseInt(saved, 10));
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
 
   const startLevel = useCallback((currentLevel: number) => {
     setIsPlaying(true);
@@ -43,21 +58,62 @@ export const MemoryGame = () => {
     setFailed(false);
     setSuccess(false);
     setIsShowingSequence(true);
+    
+    // Set modifiers based on level
+    setIsReverseMode(currentLevel >= 10);
+    setIsRotated(false);
+    setTimeLeft(100);
+    if (timerRef.current) clearInterval(timerRef.current);
 
     const newSequence = Array.from({ length: currentLevel + 2 }, () => Math.floor(Math.random() * GRID_SIZE));
     setSequence(newSequence);
 
     const tl = gsap.timeline({
-      onComplete: () => setIsShowingSequence(false)
+      onComplete: () => {
+        setIsShowingSequence(false);
+        
+        // Spatial Disruption: Rotate grid after showing sequence (Level 7+)
+        if (currentLevel >= 7) {
+          setIsRotated(true);
+        }
+
+        // Time Decay (Level 5+)
+        if (currentLevel >= 5) {
+          const duration = Math.max(5000, 12000 - (currentLevel * 500)); // 12s scaling down to 5s
+          const interval = 50;
+          const decreaseAmount = (interval / duration) * 100;
+          
+          timerRef.current = setInterval(() => {
+            setTimeLeft((prev) => {
+              if (prev <= 0) {
+                if (timerRef.current) clearInterval(timerRef.current);
+                setFailed(true);
+                setIsPlaying(false);
+                return 0;
+              }
+              return prev - decreaseAmount;
+            });
+          }, interval);
+        }
+      }
     });
 
     tl.to({}, { duration: 0.8 });
 
     newSequence.forEach((nodeIndex) => {
+      // Add Sensory Distractions (Level 3+)
+      const addDistraction = currentLevel >= 3 && Math.random() > 0.6;
+      let distNode = -1;
+      if (addDistraction) {
+        distNode = Math.floor(Math.random() * GRID_SIZE);
+        while (distNode === nodeIndex) distNode = Math.floor(Math.random() * GRID_SIZE);
+      }
+
       tl.call(() => setActiveNode(nodeIndex))
+        .call(() => { if(addDistraction) setDistractionNode(distNode); })
         .to({}, { duration: Math.max(0.2, 0.8 - (currentLevel * 0.05)) })
-        .call(() => setActiveNode(null))
-        .to({}, { duration: 0.2 });
+        .call(() => { setActiveNode(null); setDistractionNode(null); })
+        .to({}, { duration: 0.15 });
     });
   }, []);
 
@@ -77,26 +133,53 @@ export const MemoryGame = () => {
     setPlayerSequence(newPlayerSeq);
 
     const currentIndex = newPlayerSeq.length - 1;
-    if (sequence[currentIndex] !== index) {
+    
+    // Check correctness based on reverse mode modifier
+    const targetIndex = isReverseMode ? sequence.length - 1 - currentIndex : currentIndex;
+    
+    if (sequence[targetIndex] !== index) {
+      if (timerRef.current) clearInterval(timerRef.current);
       setFailed(true);
       setIsPlaying(false);
+      
+      // Reset rotation on fail
+      setIsRotated(false);
+      
       gsap.to(containerRef.current, { x: 8, yoyo: true, repeat: 5, duration: 0.06, ease: 'power2.inOut' });
       return;
     }
 
     if (newPlayerSeq.length === sequence.length) {
+      if (timerRef.current) clearInterval(timerRef.current);
       setSuccess(true);
-      if (level + 1 > highScore) setHighScore(level + 1);
+      
+      if (level + 1 > highScore) {
+        setHighScore(level + 1);
+        localStorage.setItem('cognitive_highscore', (level + 1).toString());
+      }
+      
       setTimeout(() => {
-        setLevel(l => l + 1);
-        startLevel(level + 1);
-      }, 1500);
+        setIsRotated(false); // Reset rotation before next level
+        setTimeout(() => {
+          setLevel(l => l + 1);
+          startLevel(level + 1);
+        }, 500); // Give time for un-rotation animation
+      }, 1000);
     }
   };
 
   const progressRatio = isPlaying && !isShowingSequence
     ? playerSequence.length / sequence.length
     : isShowingSequence ? 0 : 0;
+
+  // Determine the active modifier text
+  const getModifierText = () => {
+    if (isShowingSequence) return 'Observe the neural firing pattern.';
+    if (isReverseMode) return 'REVERSE MODE: Input the sequence backward.';
+    if (isRotated) return 'SPATIAL DISRUPTION: Grid rotated.';
+    if (level >= 5) return 'TIME DECAY: Input before signal drops.';
+    return 'Replicate the signal path perfectly.';
+  };
 
   return (
     <>
@@ -112,6 +195,10 @@ export const MemoryGame = () => {
         @keyframes nodeIdle {
           0%, 100% { box-shadow: 0 0 0px transparent; }
           50% { box-shadow: 0 0 12px var(--node-glow); }
+        }
+        @keyframes glitchFlash {
+          0%, 100% { opacity: 1; filter: hue-rotate(0deg); }
+          50% { opacity: 0.8; filter: hue-rotate(90deg) contrast(150%); }
         }
       `}</style>
 
@@ -143,18 +230,20 @@ export const MemoryGame = () => {
         </div>
 
         {/* Header */}
-        <div className="relative z-10 max-w-4xl w-full px-6 flex flex-col md:flex-row justify-between items-start md:items-end mb-12">
+        <div className="relative z-10 max-w-4xl w-full px-6 flex flex-col md:flex-row justify-between items-start md:items-end mb-8 md:mb-12">
           <div>
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
-              <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-violet-400">Neural Interface Active</span>
+              <div className={cn("w-2 h-2 rounded-full animate-pulse", isReverseMode ? "bg-rose-500" : "bg-violet-500")} />
+              <span className={cn("font-mono text-[10px] uppercase tracking-[0.3em]", isReverseMode ? "text-rose-400" : "text-violet-400")}>
+                {isReverseMode ? 'CRITICAL OVERLOAD' : 'Neural Interface Active'}
+              </span>
             </div>
             <h2 className="text-4xl md:text-6xl font-light tracking-tighter pb-1">
               <span className="text-white">Cognitive </span>
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-cyan-400 to-amber-400 font-semibold">Test</span>
             </h2>
             <p className="text-white/40 font-mono text-xs uppercase tracking-widest mt-3 max-w-md leading-relaxed">
-              Sequence memory prototype. Observe the neural firing pattern. Replicate the signal path perfectly. Short-term retention degrades after ~7 items.
+              {getModifierText()}
             </p>
           </div>
 
@@ -171,29 +260,61 @@ export const MemoryGame = () => {
           </div>
         </div>
 
-        {/* Progress bar */}
-        {isPlaying && !isShowingSequence && !failed && (
-          <div className="relative z-10 max-w-md w-full mx-auto px-6 mb-8">
-            <div className="h-1 rounded-full bg-white/5 overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all duration-300 ease-out"
-                style={{
-                  width: `${progressRatio * 100}%`,
-                  background: 'linear-gradient(90deg, #8b5cf6, #06b6d4, #10b981)',
-                }}
-              />
+        {/* Progress & Time bars */}
+        <div className="relative z-10 max-w-md w-full mx-auto px-6 mb-8 flex flex-col gap-3">
+          {/* Signal Path Progress */}
+          {(isPlaying && !isShowingSequence && !failed) && (
+            <div>
+              <div className="h-1 rounded-full bg-white/5 overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-300 ease-out"
+                  style={{
+                    width: `${progressRatio * 100}%`,
+                    background: isReverseMode 
+                      ? 'linear-gradient(90deg, #f43f5e, #f59e0b)' 
+                      : 'linear-gradient(90deg, #8b5cf6, #06b6d4, #10b981)',
+                  }}
+                />
+              </div>
+              <div className="flex justify-between mt-1.5">
+                <span className="font-mono text-[9px] text-white/20">{playerSequence.length}/{sequence.length}</span>
+                <span className="font-mono text-[9px] text-white/20">{isReverseMode ? 'REVERSE PATH' : 'SIGNAL PATH'}</span>
+              </div>
             </div>
-            <div className="flex justify-between mt-1.5">
-              <span className="font-mono text-[9px] text-white/20">{playerSequence.length}/{sequence.length}</span>
-              <span className="font-mono text-[9px] text-white/20">SIGNAL PATH</span>
+          )}
+
+          {/* Time Decay Bar (Level 5+) */}
+          {(level >= 5 && isPlaying && !isShowingSequence && !failed) && (
+            <div>
+              <div className="h-1 rounded-full bg-white/5 overflow-hidden">
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${timeLeft}%`,
+                    background: timeLeft > 50 ? '#10b981' : timeLeft > 25 ? '#f59e0b' : '#f43f5e',
+                    transition: 'width 0.1s linear, background-color 0.3s ease'
+                  }}
+                />
+              </div>
+              <div className="flex justify-between mt-1.5">
+                 <span className="font-mono text-[9px] text-white/20">{(timeLeft/10).toFixed(1)}s</span>
+                 <span className="font-mono text-[9px] text-rose-400/50 animate-pulse">DECAY TIMER</span>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Neural Grid */}
         <div className="relative z-10">
           {/* SVG neural connection lines behind the grid */}
-          <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 300 300" style={{ opacity: 0.08 }}>
+          <svg 
+            className="absolute inset-0 w-full h-full pointer-events-none transition-transform duration-1000 ease-in-out" 
+            viewBox="0 0 300 300" 
+            style={{ 
+              opacity: 0.08,
+              transform: isRotated ? 'rotate(90deg)' : 'none'
+            }}
+          >
             {NEURAL_CONNECTIONS.map(([a, b], i) => {
               const ax = (a % 3) * 100 + 50, ay = Math.floor(a / 3) * 100 + 50;
               const bx = (b % 3) * 100 + 50, by = Math.floor(b / 3) * 100 + 50;
@@ -216,12 +337,19 @@ export const MemoryGame = () => {
             style={{
               background: 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(10,5,20,0.9) 100%)',
               willChange: 'transform',
+              transform: isRotated ? (typeof window !== 'undefined' && window.innerWidth < 768 ? 'rotate(180deg)' : 'rotate(90deg)') : 'none',
+              transition: 'transform 1s cubic-bezier(0.68, -0.55, 0.265, 1.55)',
             }}
           >
             {Array.from({ length: GRID_SIZE }).map((_, i) => {
               const nodeColor = NODE_COLORS[i];
               const isActive = activeNode === i;
-              const isCorrectlyClicked = playerSequence.includes(i) && !failed;
+              const isDistraction = distractionNode === i;
+              
+              // Determine active styles (Standard vs Distraction)
+              const currentBg = isDistraction ? '#f43f5e' : nodeColor.bg;
+              const currentGlow = isDistraction ? 'rgba(244,63,94,0.8)' : nodeColor.glow;
+              const isVisualActive = isActive || isDistraction;
 
               return (
                 <button
@@ -237,46 +365,57 @@ export const MemoryGame = () => {
                     isPlaying && !isShowingSequence && !failed && "cursor-pointer hover:scale-105 active:scale-95",
                   )}
                   style={{
-                    ['--node-glow' as string]: nodeColor.glow,
-                    background: isActive
-                      ? `radial-gradient(circle at center, ${nodeColor.bg}, ${nodeColor.bg}88)`
+                    ['--node-glow' as string]: currentGlow,
+                    background: isVisualActive
+                      ? `radial-gradient(circle at center, ${currentBg}, ${currentBg}88)`
                       : `linear-gradient(135deg, ${nodeColor.bg}15, ${nodeColor.bg}08)`,
-                    border: `1px solid ${isActive ? nodeColor.bg : `${nodeColor.bg}25`}`,
-                    boxShadow: isActive
-                      ? `0 0 40px ${nodeColor.glow}, 0 0 80px ${nodeColor.glow}40, inset 0 0 30px ${nodeColor.glow}30`
+                    border: `1px solid ${isVisualActive ? currentBg : `${nodeColor.bg}25`}`,
+                    boxShadow: isVisualActive
+                      ? `0 0 40px ${currentGlow}, 0 0 80px ${currentGlow}40, inset 0 0 30px ${currentGlow}30`
                       : `0 0 0px transparent`,
-                    transform: isActive ? 'scale(1.1)' : undefined,
-                    animation: isPlaying && !isActive && !isShowingSequence ? `nodeIdle 3s ease-in-out infinite` : 'none',
+                    transform: isVisualActive ? 'scale(1.1)' : undefined,
+                    animation: isDistraction 
+                       ? 'glitchFlash 0.2s ease-in-out infinite' 
+                       : isPlaying && !isVisualActive && !isShowingSequence ? `nodeIdle 3s ease-in-out infinite` : 'none',
                     animationDelay: `${i * 0.2}s`,
-                    focusRing: nodeColor.bg,
+                    // Counter-rotate the label inside so it stays upright if grid rotates
+                    ['--counter-rot' as string]: isRotated ? (typeof window !== 'undefined' && window.innerWidth < 768 ? '-180deg' : '-90deg') : '0deg',
                   } as React.CSSProperties}
                   aria-label={`Neural Node ${nodeColor.name}`}
                 >
                   {/* Inner brain icon / pattern */}
-                  <div className="absolute inset-0 flex items-center justify-center">
+                  <div 
+                    className="absolute inset-0 flex items-center justify-center transition-transform duration-1000"
+                    style={{ transform: `rotate(var(--counter-rot))` }}
+                  >
                     <div
                       className="w-6 h-6 md:w-8 md:h-8 rounded-full transition-all duration-300"
                       style={{
-                        background: isActive
-                          ? `radial-gradient(circle, white, ${nodeColor.bg})`
+                        background: isVisualActive
+                          ? `radial-gradient(circle, white, ${currentBg})`
                           : `radial-gradient(circle, ${nodeColor.bg}40, transparent)`,
-                        boxShadow: isActive ? `0 0 20px ${nodeColor.bg}` : 'none',
+                        boxShadow: isVisualActive ? `0 0 20px ${currentBg}` : 'none',
                       }}
                     />
                   </div>
 
                   {/* Node label */}
-                  <span
-                    className="absolute bottom-1.5 md:bottom-2 left-0 right-0 text-center font-mono text-[7px] md:text-[8px] uppercase tracking-wider transition-opacity duration-300"
-                    style={{ color: isActive ? '#fff' : `${nodeColor.bg}60`, opacity: isPlaying ? 1 : 0.3 }}
+                  <div 
+                    className="absolute inset-0 flex items-end justify-center pb-1.5 md:pb-2 transition-transform duration-1000"
+                    style={{ transform: `rotate(var(--counter-rot))` }}
                   >
-                    {nodeColor.name}
-                  </span>
+                    <span
+                      className="text-center font-mono text-[7px] md:text-[8px] uppercase tracking-wider transition-opacity duration-300 whitespace-nowrap"
+                      style={{ color: isVisualActive ? '#fff' : `${nodeColor.bg}60`, opacity: isPlaying ? 1 : 0.3 }}
+                    >
+                      {isDistraction ? 'ANOMALY' : nodeColor.name}
+                    </span>
+                  </div>
 
                   {/* Hover glow effect */}
                   <div
                     className="absolute inset-0 rounded-2xl md:rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
-                    style={{ boxShadow: `inset 0 0 20px ${nodeColor.glow}20, 0 0 15px ${nodeColor.glow}15` }}
+                    style={{ boxShadow: `inset 0 0 20px ${currentGlow}20, 0 0 15px ${currentGlow}15` }}
                   />
                 </button>
               );
@@ -311,7 +450,7 @@ export const MemoryGame = () => {
               </span>
             </button>
           ) : (
-            <div className="text-center font-mono text-sm tracking-widest uppercase">
+            <div className="text-center font-mono text-sm tracking-widest uppercase h-8 flex items-center justify-center">
               {isShowingSequence ? (
                 <div className="flex items-center gap-3">
                   <div className="flex gap-1">
@@ -320,7 +459,7 @@ export const MemoryGame = () => {
                     ))}
                   </div>
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400">
-                    Mapping neural pattern...
+                    Mapping pattern...
                   </span>
                 </div>
               ) : success ? (
@@ -330,9 +469,7 @@ export const MemoryGame = () => {
                     Synapse Strengthened ✓
                   </span>
                 </div>
-              ) : (
-                <span className="text-white/60">Replicate the signal path</span>
-              )}
+              ) : null}
             </div>
           )}
         </div>
@@ -348,6 +485,7 @@ export const MemoryGame = () => {
               </div>
               <div className="font-mono text-xs text-rose-400/60 tracking-widest uppercase">
                 Neural pathway disrupted at level {level}
+                {timeLeft <= 0 && " (TIME EXPIRED)"}
               </div>
             </div>
           </div>

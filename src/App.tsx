@@ -7,6 +7,7 @@ import { InfoGrid } from './components/InfoGrid';
 import { BrainDiagramSection } from './components/BrainDiagramSection';
 import { Footer } from './components/Footer';
 import { DNADivider } from './components/DNADivider';
+import { SynapticPairs } from './components/SynapticPairs';
 
 export default function App() {
   return (
@@ -20,6 +21,8 @@ export default function App() {
         <AboutSection />
         <DNADivider />
         <MemoryGame />
+        <DNADivider />
+        <SynapticPairs />
         <InfoGrid />
         <BrainDiagramSection />
         <Footer />
