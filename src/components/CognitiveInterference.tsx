@@ -13,6 +13,7 @@ const COLORS = [
 export const CognitiveInterference = ({ onQuit }: { onQuit?: () => void }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [score, setScore] = useState(0);
+  const scoreRef = useRef(0);
   const [timeLeft, setTimeLeft] = useState(30);
   const [gameOver, setGameOver] = useState(false);
   
@@ -42,6 +43,7 @@ export const CognitiveInterference = ({ onQuit }: { onQuit?: () => void }) => {
   const startGame = () => {
     setIsPlaying(true);
     setScore(0);
+    scoreRef.current = 0;
     setTimeLeft(30);
     setGameOver(false);
     generateRound();
@@ -53,8 +55,8 @@ export const CognitiveInterference = ({ onQuit }: { onQuit?: () => void }) => {
           if (timerRef.current) clearInterval(timerRef.current);
           setGameOver(true);
           setIsPlaying(false);
-          // Award XP based on score
-          awardXP(score * 2, 'processingSpeed');
+          // Award XP based on latest score
+          awardXP(scoreRef.current * 2, 'processingSpeed');
           return 0;
         }
         return prev - 1;
@@ -70,10 +72,10 @@ export const CognitiveInterference = ({ onQuit }: { onQuit?: () => void }) => {
     if (!isPlaying || gameOver) return;
 
     if (colorHex === wordColor.hex) {
-      setScore(s => s + 10);
+      setScore(s => { const newScore = s + 10; scoreRef.current = newScore; return newScore; });
       generateRound();
     } else {
-      setScore(s => Math.max(0, s - 5));
+      setScore(s => { const newScore = Math.max(0, s - 5); scoreRef.current = newScore; return newScore; });
       // Penalty visual effect
       const wrap = document.getElementById('stroop-wrapper');
       if (wrap) {

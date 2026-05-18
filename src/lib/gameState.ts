@@ -68,6 +68,7 @@ export const updateGameState = (updates: Partial<UserStats>) => {
   }
 
   localStorage.setItem('cog_user_state', JSON.stringify(next));
+  window.dispatchEvent(new Event('cog_state_updated'));
   return next;
 };
 

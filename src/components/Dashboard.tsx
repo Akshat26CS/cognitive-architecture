@@ -100,6 +100,9 @@ export const Dashboard = ({ onClose }: DashboardProps) => {
 
   useEffect(() => {
     setStats(getGameState());
+    const handleUpdate = () => setStats(getGameState());
+    window.addEventListener('cog_state_updated', handleUpdate);
+    return () => window.removeEventListener('cog_state_updated', handleUpdate);
   }, []);
 
   if (!stats) return null;
