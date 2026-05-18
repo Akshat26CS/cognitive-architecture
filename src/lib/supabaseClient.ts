@@ -1,15 +1,18 @@
 import { createClient } from '@supabase/supabase-js';
 
 // @ts-ignore
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const envUrl = import.meta.env.VITE_SUPABASE_URL;
 // @ts-ignore
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+// Direct secure fallbacks for mobile sandboxes where environment variables are cached/blocked
+const supabaseUrl = envUrl || 'https://wqpeyizyizynpagftjnz.supabase.co';
+const supabaseAnonKey = envKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxcGV5aXp5aXp5bnBhZ2Z0am56Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxMDE4NTEsImV4cCI6MjA5NDY3Nzg1MX0.LO_Vg4xZtb6dV-nmK6hzuPht8j0vhvaiXpZhQiZFL0Q';
 
 let client: any = null;
 
 try {
-  console.log("[Supabase Config Status] URL Loaded:", supabaseUrl ? "YES" : "NO", "| Key Loaded:", supabaseAnonKey ? "YES" : "NO");
-  if (supabaseUrl && supabaseAnonKey && !supabaseUrl.includes('your-supabase-project-id')) {
+  if (supabaseUrl && supabaseAnonKey) {
     client = createClient(supabaseUrl, supabaseAnonKey);
     console.log("[Supabase Status] Client initialized successfully!");
   } else {
