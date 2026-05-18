@@ -107,6 +107,15 @@ export const Dashboard = ({ onClose }: DashboardProps) => {
     return () => window.removeEventListener('cog_state_updated', handleUpdate);
   }, []);
 
+  useEffect(() => {
+    // Disable body scroll when modal is open
+    document.body.style.overflow = 'hidden';
+    return () => {
+      // Re-enable body scroll when closed
+      document.body.style.overflow = '';
+    };
+  }, []);
+
   const handleSaveName = () => {
     if (tempName.trim()) {
       updateGameState({ username: tempName.trim() });
