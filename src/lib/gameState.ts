@@ -1,4 +1,5 @@
 export interface UserStats {
+  username: string;
   processingSpeed: number; // 0-100
   memoryCapacity: number; // 0-100
   spatialReasoning: number; // 0-100
@@ -11,6 +12,7 @@ export interface UserStats {
 }
 
 const DEFAULT_STATS: UserStats = {
+  username: 'Guest User',
   processingSpeed: 10,
   memoryCapacity: 15,
   spatialReasoning: 10,
@@ -34,7 +36,7 @@ export const getGameState = (): UserStats => {
   if (!saved) return DEFAULT_STATS;
   
   try {
-    const parsed = JSON.parse(saved);
+    const parsed = { ...DEFAULT_STATS, ...JSON.parse(saved) };
     // Handle daily streak logic
     const now = new Date();
     if (parsed.lastPlayed) {

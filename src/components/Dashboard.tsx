@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getGameState, UserStats, COUPONS } from '../lib/gameState';
+import { getGameState, UserStats, COUPONS, updateGameState } from '../lib/gameState';
 import { cn } from '../lib/utils';
 
 interface DashboardProps {
@@ -97,6 +97,8 @@ const LEADERBOARD_MOCK = [
 export const Dashboard = ({ onClose }: DashboardProps) => {
   const [stats, setStats] = useState<UserStats | null>(null);
   const [activeTab, setActiveTab] = useState<'profile' | 'leaderboard' | 'rewards'>('profile');
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [tempName, setTempName] = useState('');
 
   useEffect(() => {
     setStats(getGameState());
@@ -104,6 +106,13 @@ export const Dashboard = ({ onClose }: DashboardProps) => {
     window.addEventListener('cog_state_updated', handleUpdate);
     return () => window.removeEventListener('cog_state_updated', handleUpdate);
   }, []);
+
+  const handleSaveName = () => {
+    if (tempName.trim()) {
+      updateGameState({ username: tempName.trim() });
+    }
+    setIsEditingName(false);
+  };
 
   if (!stats) return null;
 
@@ -114,11 +123,33 @@ export const Dashboard = ({ onClose }: DashboardProps) => {
         {/* Sidebar */}
         <div className="w-full md:w-64 bg-black/50 border-b md:border-b-0 md:border-r border-white/10 p-6 flex flex-col">
           <div className="flex items-center gap-4 mb-10">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-xl font-bold">
-              U
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-xl font-bold text-white shadow-[0_0_15px_rgba(139,92,246,0.3)]">
+              {stats.username.charAt(0).toUpperCase()}
             </div>
-            <div>
-              <h3 className="font-bold text-white tracking-wide">User_01</h3>
+            <div className="flex-1 min-w-0">
+              {isEditingName ? (
+                <input
+                  type="text"
+                  value={tempName}
+                  onChange={(e) => setTempName(e.target.value)}
+                  onBlur={handleSaveName}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSaveName()}
+                  autoFocus
+                  className="w-full bg-black/50 border border-violet-500/50 rounded px-1.5 py-0.5 text-sm font-bold text-white font-mono focus:outline-none focus:border-violet-500"
+                  maxLength={15}
+                />
+              ) : (
+                <div className="flex items-center gap-1.5 group/name">
+                  <h3 className="font-bold text-white tracking-wide truncate">{stats.username}</h3>
+                  <button
+                    onClick={() => { setTempName(stats.username); setIsEditingName(true); }}
+                    className="opacity-0 group-hover/name:opacity-100 transition-opacity text-white/40 hover:text-white text-[10px]"
+                    title="Edit Name"
+                  >
+                    ✏️
+                  </button>
+                </div>
+              )}
               <p className="text-xs font-mono text-violet-400">LVL {stats.level}</p>
             </div>
           </div>
@@ -226,7 +257,7 @@ export const Dashboard = ({ onClose }: DashboardProps) => {
                         842
                       </div>
                       <div>
-                        <div className="font-bold text-white">User_01</div>
+                        <div className="font-bold text-white">{stats.username}</div>
                         <div className="text-xs font-mono text-violet-400">Synaptic Novice</div>
                       </div>
                     </div>
