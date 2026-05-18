@@ -23,7 +23,7 @@ interface Card {
   isMatched: boolean;
 }
 
-export const SynapticPairs = () => {
+export const SynapticPairs = ({ onQuit }: { onQuit?: () => void }) => {
   const [cards, setCards] = useState<Card[]>([]);
   const [flippedIndices, setFlippedIndices] = useState<number[]>([]);
   const [matches, setMatches] = useState(0);
@@ -251,12 +251,22 @@ export const SynapticPairs = () => {
                 <p className="text-white/50 font-mono text-sm mb-6">Found {matches}/{CARD_DATA.length} pairs.</p>
               </>
             )}
-            <button
-              onClick={initializeGame}
-              className="px-8 py-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 font-mono text-sm uppercase tracking-widest transition-colors"
-            >
-              {gameWon ? 'Play Again' : 'Retry'}
-            </button>
+            <div className="flex gap-4 justify-center">
+              <button
+                onClick={initializeGame}
+                className="px-8 py-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 font-mono text-sm uppercase tracking-widest transition-colors"
+              >
+                {gameWon ? 'Play Again' : 'Retry'}
+              </button>
+              {onQuit && (
+                <button
+                  onClick={onQuit}
+                  className="px-8 py-3 rounded-xl bg-transparent hover:bg-white/10 border border-white/10 font-mono text-sm uppercase tracking-widest text-white/40 hover:text-white transition-colors"
+                >
+                  Quit
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

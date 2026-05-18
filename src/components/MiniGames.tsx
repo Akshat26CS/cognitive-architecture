@@ -114,7 +114,7 @@ export const MiniGames = () => {
 
         {/* Active Game */}
         {activeGame === 'sequence' && <MemoryGame />}
-        {activeGame === 'pairs' && <SynapticPairs />}
+        {activeGame === 'pairs' && <SynapticPairs onQuit={() => setActiveGame(null)} />}
       </section>
     </>
   );
