@@ -280,7 +280,7 @@ export const MemoryGame = () => {
   const nc = ALL_COLORS.slice(0, meta.gridSize);
 
   return (
-    <div className="w-full max-w-4xl px-4 flex flex-col items-center">
+    <div className="relative z-10 w-full max-w-4xl px-4 flex flex-col items-center">
       <style>{`
         @keyframes nodeIdle { 0%,100%{box-shadow:0 0 0 transparent} 50%{box-shadow:0 0 10px var(--ng)} }
         @keyframes glitch { 0%,100%{opacity:1;filter:hue-rotate(0)} 50%{opacity:.7;filter:hue-rotate(90deg) contrast(150%)} }
@@ -357,7 +357,7 @@ export const MemoryGame = () => {
       </div>
 
       {/* Status */}
-      <div className="mt-6 h-20 flex items-center justify-center text-center">
+      <div className="relative z-30 mt-6 min-h-[80px] flex items-center justify-center text-center pointer-events-auto">
         {isShowing && (
           <div className="flex items-center gap-2">
             <div className="flex gap-1">{[0,1,2].map(j=><div key={j} className="w-1.5 h-1.5 rounded-full animate-bounce" style={{backgroundColor:meta.color, animationDelay:`${j*.12}s`}}/>)}</div>
@@ -369,7 +369,7 @@ export const MemoryGame = () => {
             <div className="text-xl font-light text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400 mb-3">Stage {selectedSub + 1} Complete ✓</div>
             <div className="flex gap-4 justify-center">
               {selectedSub < SUBS_PER_LEVEL - 1 && (
-                <button onClick={() => startGame(selectedLevel, selectedSub + 1)} className="px-5 py-2 rounded-lg font-mono text-xs uppercase tracking-widest transition-colors border" style={{borderColor:`${meta.color}40`, color:meta.color}}>Next →</button>
+                <button onClick={() => startGame(selectedLevel, selectedSub + 1)} className="relative z-40 px-5 py-2 rounded-lg font-mono text-xs uppercase tracking-widest transition-colors border cursor-pointer hover:bg-white/10" style={{borderColor:`${meta.color}40`, color:meta.color}}>Next →</button>
               )}
               <button onClick={() => setView('sublevels')} className="text-white/30 hover:text-white font-mono text-xs uppercase tracking-widest transition-colors">Map</button>
             </div>
@@ -379,7 +379,7 @@ export const MemoryGame = () => {
           <div>
             <div className="text-xl font-light text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-rose-500 mb-3">Signal Lost</div>
             <div className="flex gap-4 justify-center">
-              <button onClick={() => startGame(selectedLevel, selectedSub)} className="px-5 py-2 rounded-lg font-mono text-xs uppercase tracking-widest border border-white/15 text-white/50 hover:text-white transition-colors">Retry</button>
+              <button onClick={() => startGame(selectedLevel, selectedSub)} className="relative z-40 px-5 py-2 rounded-lg font-mono text-xs uppercase tracking-widest border border-white/15 text-white/50 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">Retry</button>
               <button onClick={() => setView('sublevels')} className="text-white/30 hover:text-white font-mono text-xs uppercase tracking-widest transition-colors">Map</button>
             </div>
           </div>
