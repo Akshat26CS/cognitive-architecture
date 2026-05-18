@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '../lib/utils';
 import gsap from 'gsap';
 
@@ -57,6 +57,7 @@ export const MemoryGame = () => {
 
   const gridRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const tlRef = useRef<gsap.core.Timeline | null>(null);
 
   useEffect(() => {
     const s = localStorage.getItem('cog_completed');
@@ -86,7 +87,11 @@ export const MemoryGame = () => {
     return { ...meta, seqLen, speed, timerDuration };
   };
 
-  const startGame = useCallback((lvlIdx: number, subIdx: number) => {
+  const startGame = (lvlIdx: number, subIdx: number) => {
+    // Kill any running animations/timers from previous game
+    if (tlRef.current) { tlRef.current.kill(); tlRef.current = null; }
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+
     setSelectedLevel(lvlIdx);
     setSelectedSub(subIdx);
     setView('game');
@@ -97,7 +102,8 @@ export const MemoryGame = () => {
     setIsPlaying(true);
     setIsRotated(false);
     setTimeLeft(100);
-    if (timerRef.current) clearInterval(timerRef.current);
+    setActiveNode(null);
+    setDistNode(null);
 
     const cfg = getConfig(lvlIdx, subIdx);
     const seq = Array.from({ length: cfg.seqLen }, () => Math.floor(Math.random() * cfg.gridSize));
@@ -119,6 +125,7 @@ export const MemoryGame = () => {
         }
       }
     });
+    tlRef.current = tl;
     tl.to({}, { duration: 0.5 });
     seq.forEach(ni => {
       const addD = cfg.distract && Math.random() > 0.6;
@@ -129,7 +136,7 @@ export const MemoryGame = () => {
         .call(() => { setActiveNode(null); setDistNode(null); })
         .to({}, { duration: 0.12 });
     });
-  }, []);
+  };
 
   const handleClick = (i: number) => {
     if (!isPlaying || isShowing || failed || success) return;
