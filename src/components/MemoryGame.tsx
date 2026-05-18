@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '../lib/utils';
 import gsap from 'gsap';
+import { awardXP, checkAndAwardCoupons } from '../lib/gameState';
 
 // ─── Level & Sublevel System ───
 const LEVEL_META = [
@@ -154,12 +155,16 @@ export const MemoryGame = () => {
       return;
     }
     if (np.length === sequence.length) {
-      if (timerRef.current) clearInterval(timerRef.current);
+      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
       setSuccess(true); setIsPlaying(false); setIsRotated(false);
       const nk = key(selectedLevel, selectedSub);
       const nc = { ...completed, [nk]: true };
       setCompleted(nc);
       localStorage.setItem('cog_completed', JSON.stringify(nc));
+      
+      // Award XP and check coupons
+      awardXP(25 + (selectedLevel * 10), 'memoryCapacity');
+      setTimeout(checkAndAwardCoupons, 100);
     }
   };
 

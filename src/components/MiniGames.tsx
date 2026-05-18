@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { MemoryGame } from './MemoryGame';
 import { SynapticPairs } from './SynapticPairs';
+import { CognitiveInterference } from './CognitiveInterference';
 
 const GAMES = [
   { id: 'sequence', title: 'Neural Sequence', subtitle: '80 Stages · 8 Worlds', icon: '⚡', color: '#8b5cf6', gradient: 'from-violet-600 to-indigo-800', desc: 'Master escalating pattern recognition across 8 cognitive worlds, each with 10 stages of increasing difficulty.' },
   { id: 'pairs', title: 'Synaptic Pairs', subtitle: 'Visual Memory', icon: '🧩', color: '#14b8a6', gradient: 'from-teal-600 to-emerald-800', desc: 'Flip stunning brain illustrations and match pairs before neural pathways expire.' },
+  { id: 'stroop', title: 'Cognitive Interference', subtitle: 'Processing Speed', icon: '🔥', color: '#f43f5e', gradient: 'from-rose-600 to-red-800', desc: 'A high-speed Stroop Test. Select the ink color of the text, not the word itself. Causes extreme brain friction.' },
 ];
 
 export const MiniGames = () => {
@@ -115,6 +117,7 @@ export const MiniGames = () => {
         {/* Active Game */}
         {activeGame === 'sequence' && <MemoryGame />}
         {activeGame === 'pairs' && <SynapticPairs onQuit={() => setActiveGame(null)} />}
+        {activeGame === 'stroop' && <CognitiveInterference onQuit={() => setActiveGame(null)} />}
       </section>
     </>
   );

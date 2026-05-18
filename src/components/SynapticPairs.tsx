@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { cn } from '../lib/utils';
+import { awardXP } from '../lib/gameState';
 
 // 8 pairs using beautiful generated images
 const CARD_DATA = [
@@ -98,6 +99,9 @@ export const SynapticPairs = ({ onQuit }: { onQuit?: () => void }) => {
             setIsPlaying(false);
             setGameWon(true);
             if (timerRef.current) clearInterval(timerRef.current);
+            // Award XP based on remaining time and moves
+            const xp = 50 + (timeRemaining * 2) - (moves * 0.5);
+            awardXP(Math.max(10, Math.floor(xp)), 'spatialReasoning');
           }
         }, 600);
       } else {

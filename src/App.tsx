@@ -7,10 +7,12 @@ import { InfoGrid } from './components/InfoGrid';
 import { BrainDiagramSection } from './components/BrainDiagramSection';
 import { Footer } from './components/Footer';
 import { DNADivider } from './components/DNADivider';
+import { FloatingNav } from './components/FloatingNav';
 
 export default function App() {
   return (
     <div className="relative w-full bg-black min-h-screen text-white">
+      <FloatingNav />
       {/* 3D Background */}
       <BrainCanvas />
       
