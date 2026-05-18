@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { MemoryGame } from './MemoryGame';
 import { SynapticPairs } from './SynapticPairs';
 import { CognitiveInterference } from './CognitiveInterference';
@@ -11,6 +11,14 @@ const GAMES = [
 
 export const MiniGames = () => {
   const [activeGame, setActiveGame] = useState<string | null>(null);
+  const sectionRef = useRef<HTMLDivElement>(null);
+
+  const handleLaunchGame = (gameId: string) => {
+    setActiveGame(gameId);
+    setTimeout(() => {
+      sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  };
 
   return (
     <>
@@ -20,7 +28,7 @@ export const MiniGames = () => {
         @keyframes glowOrbit { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
       `}</style>
 
-      <section className="relative min-h-screen flex flex-col items-center justify-center py-20 md:py-28 z-20 pointer-events-auto overflow-hidden"
+      <section ref={sectionRef} className="relative min-h-screen flex flex-col items-center justify-center py-20 md:py-28 z-20 pointer-events-auto overflow-hidden"
         style={{ background: 'linear-gradient(180deg, #050505 0%, #08051a 25%, #0d0824 50%, #08051a 75%, #050505 100%)' }}
       >
         {/* Animated grid background */}
@@ -63,7 +71,7 @@ export const MiniGames = () => {
         {!activeGame && (
           <div className="relative z-10 flex flex-col md:flex-row gap-5 md:gap-8 px-6 max-w-4xl w-full">
             {GAMES.map((game) => (
-              <button key={game.id} onClick={() => setActiveGame(game.id)}
+              <button key={game.id} onClick={() => handleLaunchGame(game.id)}
                 className="group relative flex-1 rounded-2xl overflow-hidden transition-all duration-500 hover:-translate-y-3 text-left"
                 style={{ border: `1px solid ${game.color}20` }}
               >
