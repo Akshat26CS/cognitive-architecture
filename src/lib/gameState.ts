@@ -181,6 +181,7 @@ export const saveCompletedStage = (stageKey: string) => {
 
 // Sync Supabase cloud profile down to localStorage
 export const syncProfileFromCloud = async (userId: string, username: string) => {
+  if (!supabase) return;
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
@@ -225,6 +226,7 @@ export const syncProfileFromCloud = async (userId: string, username: string) => 
 };
 
 export const signUpUser = async (username: string, email: string, password: string): Promise<{ error: string | null }> => {
+  if (!supabase) return { error: 'Database service is currently offline.' };
   try {
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -244,6 +246,7 @@ export const signUpUser = async (username: string, email: string, password: stri
 };
 
 export const signInUser = async (email: string, password: string): Promise<{ error: string | null }> => {
+  if (!supabase) return { error: 'Database service is currently offline.' };
   try {
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -263,19 +266,22 @@ export const signInUser = async (email: string, password: string): Promise<{ err
 };
 
 export const signOutUser = async () => {
-  await supabase.auth.signOut();
+  if (supabase) {
+    await supabase.auth.signOut();
+  }
   localStorage.removeItem('cog_active_user');
   window.dispatchEvent(new Event('cog_state_updated'));
 };
 
-// Set up automatic session sync listener on file load
-supabase.auth.onAuthStateChange((event, session) => {
-  if (event === 'SIGNED_IN' && session?.user) {
-    const username = session.user.user_metadata?.username || session.user.email?.split('@')[0] || 'Guest';
-    localStorage.setItem('cog_active_user', username);
-    syncProfileFromCloud(session.user.id, username).then();
-  } else if (event === 'SIGNED_OUT') {
-    localStorage.removeItem('cog_active_user');
-    window.dispatchEvent(new Event('cog_state_updated'));
-  }
-});
+if (supabase) {
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_IN' && session?.user) {
+      const username = session.user.user_metadata?.username || session.user.email?.split('@')[0] || 'Guest';
+      localStorage.setItem('cog_active_user', username);
+      syncProfileFromCloud(session.user.id, username).then();
+    } else if (event === 'SIGNED_OUT') {
+      localStorage.removeItem('cog_active_user');
+      window.dispatchEvent(new Event('cog_state_updated'));
+    }
+  });
+}
